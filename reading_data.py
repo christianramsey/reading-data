@@ -1,7 +1,16 @@
 import tensorflow as tf
 import numpy as np
 
+# TODOS
+# training / testing
+# load multiple sharded files across different machines
+# real vs sparse values
+# embed sparse_values
+# load embedding
+
 file_path = "data/dataset.csv"
+# google cloud version
+file_path = "data/*.csv"
 feature_names = ['lat', 'lng', 'ad', "altitude", 'time_before', 'date', 'time', 'y']
 feat_defaults = [ [0.],  [0.],  [0.], [0.],        [0.],         ['na'],   ['na'],  [0]  ]
 
@@ -43,3 +52,10 @@ next_batch = my_input_fn(file_path, batch_size=1, perform_shuffle=True) # Will r
 with tf.Session() as sess:
     first_batch = sess.run(next_batch)
 pprint(first_batch)
+
+
+classifier = tf.estimator.DNNClassifier(
+   feature_columns=my_input_fn(), # The input features to our model
+   hidden_units=[10, 10], # Two layers, each with 10 neurons
+   n_classes=3,
+   model_dir=PATH) # Path to where checkpoints etc are stored
