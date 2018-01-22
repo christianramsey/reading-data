@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 # TODOS
+# add in wide and deep estimator
 # training / testing
 # load multiple sharded files across different machines
 # real vs sparse values
@@ -53,9 +54,9 @@ with tf.Session() as sess:
     first_batch = sess.run(next_batch)
 pprint(first_batch)
 
-#
-# classifier = tf.estimator.DNNClassifier(
-#    feature_columns=my_input_fn(), # The input features to our model
-#    hidden_units=[10, 10], # Two layers, each with 10 neurons
-#    n_classes=3,
-#    model_dir=PATH) # Path to where checkpoints etc are stored
+
+classifier = tf.estimator.DNNClassifier(
+   feature_columns=my_input_fn(),
+   hidden_units=[43, 10, 4],
+   n_classes=3,
+   model_dir='model/')

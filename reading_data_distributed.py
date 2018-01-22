@@ -72,19 +72,19 @@ def input_dataset(filenames="data/dataset.csv", perform_shuffle=False, mode=tf.c
 train_spec = tf.estimator.TrainSpec(input_fn=lambda: input_dataset(batch_size=1,
                                                                    training_epochs=1,
                                                                     max_steps=500))
-eval_spec = tf.estimator.EvalSpec(input_fn=lambda: input_dataset(batch_size=1,
-                                                                 labels=batch_labels,
-                                                                 perform_shuffle=False,
-                                                                 batch_size=1))
+# eval_spec = tf.estimator.EvalSpec(input_fn=lambda: input_dataset(batch_size=1,
+#                                                                  labels=batch_labels,
+#                                                                  perform_shuffle=False,
+#                                                                  batch_size=1))
 
-tf.estimator.train_and_evaluate(est_catvsdog, train_spec, eval_spec)
-
-classifier = tf.estimator.LinearClassifier(
-    n_classes=3,
-    model_dir="tmp/iris", batch_features)
-
-classifier.train(input_fn=input_dataset(batch_size=1, training_epochs=1 ),
-               steps=100)
+# tf.estimator.train_and_evaluate(est_catvsdog, train_spec, eval_spec)
+#
+# classifier = tf.estimator.LinearClassifier(
+#     n_classes=3,
+#     model_dir="tmp/iris", batch_features)
+#
+# classifier.train(input_fn=input_dataset(batch_size=1, training_epochs=1 ),
+#                steps=100)
 
 # accuracy_score = classifier.evaluate(input_fn=input_fn(test_set),
 #                                      steps=50)["accuracy"]
