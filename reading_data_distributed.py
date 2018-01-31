@@ -7,8 +7,8 @@ file_path = ["data/dataset.csv"]
 # # google cloud version
 # file_path = "data/*.csv"
 feature_names = ['lat', 'lng', 'ad', "altitude", 'time_before', 'date', 'time', 'y']
-feat_defaults = [ [0.],  [0.],  [0.], [0.],        [0.],         ['na'],   ['na'],  [0]  ]
-#
+feat_defaults = [ [0.],  [0.],  ['na'], [0.],        [0.],         ['na'],   ['na'],  [0]  ]
+
 
 def get_features_raw():
     real = {
@@ -18,16 +18,13 @@ def get_features_raw():
     }
     sparse = {
         'date': tflayers.sparse_column_with_hash_bucket('date', hash_bucket_size=1000),
-      'time' : tflayers.sparse_column_with_hash_bucket('time', hash_bucket_size=1000),
-
+        'time' : tflayers.sparse_column_with_hash_bucket('time', hash_bucket_size=1000),
+        'ad': tflayers.sparse_column_with_hash_bucket('ad', hash_bucket_size=10)
     }
     return real, sparse
 
 def get_features():
     return get_features_raw()
-
-
-
 
 def input_dataset(filenames="data/dataset.csv", perform_shuffle=False, mode=tf.contrib.learn.ModeKeys.EVAL, batch_size=32, training_epochs=10):
 
@@ -48,37 +45,54 @@ def input_dataset(filenames="data/dataset.csv", perform_shuffle=False, mode=tf.c
             dataset = dataset.shuffle(buffer_size=256)
         dataset.batch(batch_size)
         dataset.repeat(training_epochs)
+        print(dataset)
         iterator = dataset.make_one_shot_iterator()
         batch_features, batch_labels = iterator.get_next()
         return batch_features, batch_labels
     return _input_fn
 
 
-
-
-
-# pprint(tf.Session().run(input_dataset(batch_size=1, training_epochs=1 )))
+# tf.Session().run(input_dataset(filenames="data/dataset.csv", batch_size=32, training_epochs=5))
+print(input_dataset(filenames="data/dataset.csv", batch_size=32, training_epochs=5))
 #
 #
 # real, sparse = get_features()
 #
 # nn_classifier = tf.estimator.DNNLinearCombinedClassifier(
 #     model_dir='model/',
-#     linear_feature_columns=sparse.values(),
-#     dnn_feature_columns=real.values(),
+#     linear_feature_columns = real.values(),
 #     dnn_hidden_units=[100, 50]
 # )
 
-train_spec = tf.estimator.TrainSpec(input_fn=lambda: input_dataset(batch_size=1,
-                                                                   training_epochs=1,
-                                                                    max_steps=500))
-# eval_spec = tf.estimator.EvalSpec(input_fn=lambda: input_dataset(batch_size=1,
-#                                                                  labels=batch_labels,
-#                                                                  perform_shuffle=False,
-#                                                                  batch_size=1))
+# feature_columns = [tf.feature_column.numeric_column(k) for k in feature_names]
 
-# tf.estimator.train_and_evaluate(est_catvsdog, train_spec, eval_spec)
+# print(feature_columns)
+
+
+# next_batch = input_dataset(file_path, mode=tf.contrib.learn.ModeKeys.TRAIN, batch_size=32) # Will return first 32 elementsperform_shuffle=False, mode=tf.contrib.learn.ModeKeys.EVAL, batch_size=32, training_epochs=10
+
+# with tf.Session() as sess:
+#     print(next_batch)
+#     first_batch = sess.run(next_batch)
+# print(first_batch)
+
 #
+# nn_classifier  = tf.estimator.LinearClassifier(
+#     feature_columns=feature_columns,
+#     n_classes=3,
+#     model_dir="tmp/iris" )
+#
+#
+#
+# train_spec = tf.estimator.TrainSpec(input_fn=input_dataset(batch_size=10,
+#                                                                    training_epochs=1,
+#                                                                     ))
+# eval_spec = tf.estimator.EvalSpec(input_fn=input_dataset(batch_size=1,
+#                                                                  perform_shuffle=False,
+#                                                                  ))
+#
+# tf.estimator.train_and_evaluate(nn_classifier, train_spec, eval_spec)
+# #
 # classifier = tf.estimator.LinearClassifier(
 #     n_classes=3,
 #     model_dir="tmp/iris", batch_features)
