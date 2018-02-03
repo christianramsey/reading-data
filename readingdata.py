@@ -3,11 +3,11 @@ import numpy as np
 import tensorflow.contrib.layers as tflayers
 from pprint import pprint
 
-file_path = ["data_w_labels/*.csv"]
-filenames = ["data_w_labels/20180128trajectory2008430.csv"]
+filenames = ["20180128trajectory2008430.csv"]
 
-feature_names = ['index', 'lat', 'lng', 'ad', "altitude", 'time_before', 'date', 'time', 'y']
-feat_defaults = [[0],     [0.],  [0.],  ['0'], [0.],     [0.],          ['na'], ['na'],  [0]  ]
+feature_names = ['index', 'Lat', 'Long', 'Ignore', "DateP", 'Date_', 'Time_', 'dt_',  'y']
+feat_defaults = [[0],     [0.],  [0.],  [0],       [0.],     ['na'],   ['na'], ['na'], ['na']  ]
+
 
 
 
@@ -24,11 +24,11 @@ def input_dataset(filenames=filenames, perform_shuffle=False, mode=tf.contrib.le
         return d
 
     def _input_fn():
-        dataset = (tf.data.TextLineDataset(np.array([0, 2.3, 3.4, 2, 32., 4343, '11/23/2018', '6:00AM', 'bus' ]))
+        dataset = (tf.data.TextLineDataset(filenames)
             .skip(1)
             .map(decode_csv))
         if perform_shuffle:
-            dataset = dataset.shuffle(buffer_size=256)
+            dataset = dataset.shuffle()
         dataset.batch(batch_size)
         dataset.repeat(training_epochs)
         print(dataset)
@@ -38,58 +38,86 @@ def input_dataset(filenames=filenames, perform_shuffle=False, mode=tf.contrib.le
     return _input_fn
 
 
+r_feature_columns = [
+    tf.feature_column.numeric_column("lat"),
+    tf.feature_column.numeric_column("lng")
+]
 
-index = tflayers.real_valued_column("index")
-lat = tflayers.real_valued_column("lat")
-lng = tflayers.real_valued_column("lng")
-# start here
-ad = tflayers.real_valued_column("ad",  default_value='0', dtype='dtypes.string')
-altitude = tflayers.real_valued_column("altitude")
-time_before = tflayers.real_valued_column("time_before")
-
-real_feats = [index, lat, lng, ad, altitude, time_before ]
-time = tflayers.sparse_column_with_hash_bucket('time', hash_bucket_size=1000)
-y = tflayers.sparse_column_with_keys('y', keys='bike,bus,train,subway,taxi,walk,car'.split(','))
-time = tflayers.sparse_column_with_hash_bucket('time', hash_bucket_size=1000)
-date = tflayers.sparse_column_with_hash_bucket('date', hash_bucket_size=1000)
-
-sparse_feats = [y, time, date]
-
-def get_feature_cols(val):
-
-    real = {
-        colname: tflayers.real_valued_column(colname) \
-        for colname in \
-        ('index,lat,lng,ad,altitude,time_before').split(',')
-    }
-    sparse = {
-        'y': tflayers.sparse_column_with_keys('y',
-                                                    keys='bike,bus,train,subway,taxi,walk,car'.split(',')),
-
-        'time': tflayers.sparse_column_with_hash_bucket('origin',
-                                                          hash_bucket_size=1000),  # FIXME
-
-        'date': tflayers.sparse_column_with_hash_bucket('dest',
-                                                        hash_bucket_size=1000)  # FIXME
-    }
-    if (val == 'real'):
-        return real
-    if (val == 'sparse'):
-        return sparse
+s_feature_columns = [
+    tf.feature_column.categorical_column_with_hash_bucket("date", 1000)
+]
 
 
+#
+# index = tf.feature_column.numeric_column(key="index",  dtype='int32')
+# lat = tflayers.real_valued_column("lat")
+# lng = tflayers.real_valued_column("lng")
+# # start here
+# # ad = tflayers.real_valued_column("ad",  default_value=0, dtype='dtypes.int')
+# # from tensorflow import dtypes
+# # altitude = tflayers.real_valued_column("altitude", dtype='dtypes.int')
+# time_before = tflayers.real_valued_column("time_before")
+# # ad = tf.feature_column.numeric_column(key="ad", dtype='dtypes.int32')
+# # altitude = tf.feature_column.numeric_column(key="altitude", dtype='dtypes.int32')
+#
+# real_feats = [index, lat, lng, time_before ]
+# time = tflayers.sparse_column_with_hash_bucket('time', hash_bucket_size=1000)
+# y = tflayers.sparse_column_with_keys('y', keys='bike,bus,train,subway,taxi,walk,car'.split(','))
+# date = tflayers.sparse_column_with_hash_bucket('date', hash_bucket_size=1000)
+# ad   = tflayers.sparse_column_with_hash_bucket('ad', hash_bucket_size=1000)
+#
+# sparse_feats = [y, time, date]
+
+#
+# classifier = tf.estimator.DNNLinearCombinedClassifier(
+#     linear_feature_columns=s_feature_columns,
+#     dnn_feature_columns=r_feature_columns,
+#     dnn_hidden_units=[1000, 500, 4],
+#     model_dir="tmp/")
+#
+# print("classifer train time: ------")
+# classifier.train(input_fn=input_dataset(filenames, False), steps=1)
+# print("acc time: ------")
+# accuracy_score = classifier.evaluate(input_fn= input_dataset(filenames, False),
+#                                      steps=50)["accuracy"]
+# print('\n\n Accuracy: {0:f}'.format(accuracy_score))
 
 
 
-classifier = tf.estimator.DNNLinearCombinedClassifier(
-    linear_feature_columns=sparse_feats,
-    dnn_feature_columns=real_feats,
-    dnn_hidden_units=[1000, 500, 7],
-    model_dir="tmp/")
+dataset = tf.data.TextLineDataset('20180128trajectory2008430.csv').skip(1)
+def _parse_line(line):
+    # Decode the line into its fields
+    fields = tf.decode_csv(line, feat_defaults)
 
-print("classifer train time: ------")
-classifier.train(input_fn=input_dataset(filenames, False), steps=1)
-print("acc time: ------")
-accuracy_score = classifier.evaluate(input_fn= input_dataset(filenames, False),
-                                     steps=50)["accuracy"]
-print('\n\n Accuracy: {0:f}'.format(accuracy_score))
+    # Pack the result into a dictionary
+    features = dict(zip(feature_names,fields))
+
+    # Separate the label from the features
+    label = features.pop('y')
+
+    return features, label
+
+features, label = _parse_line(dataset)
+
+ds = dataset.map(_parse_line)
+print(ds)
+
+
+
+print(dataset.batch(32))
+
+classifier = tf.estimator.LinearClassifier(
+    feature_columns=feature_names,
+    n_classes=4,
+    model_dir="tmp/iris")
+#
+classifier.train(input_fn=features,
+               steps=100)
+#
+# accuracy_score = classifier.evaluate(input_fn=ds.get_next(),
+#                                      steps=50)["accuracy"]
+# print('\n\n Accuracy: {0:f}'.format(accuracy_score))
+
+# print(dataset)
+# features_result, labels_result = dataset.make_one_shot_iterator().get_next()
+# print((features_result, labels_result))
