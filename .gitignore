@@ -8,3 +8,8 @@
 data/20090705025307.csv
 *.csv
 *.csv
+*.PA-M-CRAMSEY
+*.meta
+*.index
+*.data-00000-of-00001
+.ropeproject/config.py
