@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.contrib.learn.python.learn.estimators  import  dynamic_rnn_estimator
 from tensorflow.python import layers as tflayers
 # from future import absolute_import
 # from future import division
@@ -6,23 +7,35 @@ from tensorflow.python import layers as tflayers
 
 import numpy as np
 
-
-COLUMNS = ['Lat', 'Long', 'Altitude', 'DateP', 'y']
-feature_names = ['Lat', 'Long', 'Altitude', 'DateP']
-FIELD_DEFAULTS = [[0.0], [0.0], [0.0], [0.], ['na']]
+COLUMNS =        ["Lat", "Long", "Ignore", "Altitude", "DateP", "Date_", "Time_", "dt_", "y"]
+# COLUMNS =        ['Lat', 'Long', 'Ignore', 'Altitude', 'DateP', 'Date_', 'Time_', 'dt_', 'y']
+FIELD_DEFAULTS = [[0.], [0.], [0], [0.], [0.], ['na'], ['na'], ['na'], ['na']]
+feature_names = COLUMNS[:-1]
 
 filepath = ['mini_set.csv']
+filepaths = []
 
-def my_input_fn(file_path, perform_shuffle=False, predict=False, repeat_count=1, batch_size=32):
+import glob, os
+
+for file in glob.glob("data/outputData.csv*"):
+    filepaths.append(file)
+
+filepaths = filepaths
+print(filepaths)
+
+# filepath = tf.data.Dataset.list_files('data_w_labels/ 2018*.csv')
+
+def my_input_fn(file_path, perform_shuffle=False, predict=False, repeat_count=1, batch_size=32, features = None, labels = None):
     def decode_csv(line):
-        parsed_line = tf.decode_csv(line, [[0.0], [0.0], [0.0], [0.], ['na']])
+        parsed_line = tf.decode_csv(line, FIELD_DEFAULTS)
         label = tf.convert_to_tensor(parsed_line[-1:])
+        print(label)
         del parsed_line[-1]  # Delete last element
         features = parsed_line  # Everything (but last element) are the features
         d = dict(zip(feature_names, features)), label
         return d
     if predict == False:
-        dataset = (tf.data.TextLineDataset(file_path)  # Read text file
+        dataset = (tf.data.TextLineDataset(filepaths)  # Read text file
                    .skip(1)  # Skip header row
                    .map(decode_csv))  # Transform each elem by decode_csv
         if perform_shuffle:
@@ -31,16 +44,25 @@ def my_input_fn(file_path, perform_shuffle=False, predict=False, repeat_count=1,
         iterator = dataset.make_one_shot_iterator()
         batch_features, batch_labels = iterator.get_next()
     else:
-        batch_features, batch_labels = tf.data.Dataset.from_tensor_slices(file_path).map(decode_csv()).batch(1).make_one_shot_iterator.get_next()
+        dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+        dataset = dataset.repeat(repeat_count).batch(1)
+        iterator = dataset.make_one_shot_iterator()
+        batch_features, batch_labels = iterator.get_next()
+
 
     return batch_features, batch_labels
 
 
-# feature_columns = [tf.feature_column.numeric_column(k) for k in feature_names]
-
+# dense feature_columns
 lat      = tf.feature_column.numeric_column("Lat")
 lng      = tf.feature_column.numeric_column("Long")
 altitude = tf.feature_column.numeric_column("Altitude")
+datep = tf.feature_column.numeric_column("DateP")
+
+# soarse feature_columns
+date_ = tf.feature_column.categorical_column_with_hash_bucket('Date_', 500)
+time_ = tf.feature_column.categorical_column_with_hash_bucket('Time_', 500)
+dt_ = tf.feature_column.categorical_column_with_hash_bucket('dt_', 500)
 
 
 lat_long_buckets = list(np.linspace(-180.0, 180.0, num=360))
@@ -72,18 +94,20 @@ crossed_ll_embedding = tf.feature_column.embedding_column(
 real_fc = [lat, lng, altitude, crossed_lng_embedding, crossed_lat_embedding, crossed_ll_embedding]
 all_fc = [lat, lng, altitude, lat_buck, lng_buck, crossed_lng_embedding, crossed_lat_embedding, crossed_ll_embedding]
 
+real_fcr = [lat, lng, altitude]
 
 my_checkpointing_config = tf.estimator.RunConfig(
     save_checkpoints_secs = 60,  # Save checkpoints every 20 minutes.
     keep_checkpoint_max = 5,       # Retain the 10 most recent checkpoints.
 )
+class_labels = ['walk','bike','bus','car','subway','train','airplane','boat','run', 'motorcycle', 'driving meet conjestion']
 
 classifier = tf.estimator.DNNLinearCombinedClassifier(
     linear_feature_columns=all_fc,
     dnn_feature_columns=real_fc,
-    dnn_hidden_units = [50,20,4],
-    n_classes=7,
-    label_vocabulary='bike,bus,train,subway,taxi,walk,car'.split(','),
+    dnn_hidden_units = [50,20,len(class_labels)],
+    n_classes=len(class_labels),
+    label_vocabulary=class_labels,
     model_dir="tmp/md",
     config=my_checkpointing_config
 
@@ -92,17 +116,37 @@ classifier = tf.estimator.DNNLinearCombinedClassifier(
 classifier.train(
     input_fn=lambda: my_input_fn(filepath, True, batch_size=32, repeat_count=10))
 
-accuracy_score = classifier.evaluate(input_fn=lambda: my_input_fn(filepath, True, batch_size=1))["accuracy"]
+accuracy_score = classifier.evaluate(input_fn=lambda: my_input_fn(filepaths, True, batch_size=1))["accuracy"]
 print('\n\n Accuracy: {0:f}'.format(accuracy_score))
 
-# predict_x = {
-#     'Lat': [5.1, 5.9, 6.9],
-#     'Long': [3.3, 3.0, 3.1],
-#     'Altitude': [1.7, 4.2, 5.4],
-# }
-# labels = ['train', 'train', 'train']
+# import pandas as pd
+# from collections import OrderedDict, defaultdict
 #
 #
-# predictions_score = classifier.predict(
-#     input_fn=lambda:lambda: my_input_fn(predict_x, predict=True, batch_size=1))
+# jetti_trips = pd.read_csv('../gps_l_data.csv')
+# predict_x = {}
+# predict_x = jetti_trips.to_dict(into=predict_x,  orient='list'   )
+#
+# print(predict_x)
 
+predict_x = {
+    'Lat': [5.1, 5.9, 6.9],
+    'Long': [3.3, 3.0, 3.1],
+    'Altitude': [1.7, 4.2, 5.4],
+}
+
+
+#
+predictions_score = classifier.predict(
+    input_fn=lambda: my_input_fn(predict_x, features = predict_x, labels=predict_x['y'], predict=True, batch_size=1))
+
+
+
+for pred_dict, expec in zip(predictions_score, predict_x['y']):
+    template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
+
+    class_id = pred_dict['class_ids'][0]
+    probability = pred_dict['probabilities'][class_id]
+
+    print(template.format(class_labels[class_id],
+                          100 * probability, expec))

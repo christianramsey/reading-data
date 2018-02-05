@@ -13,3 +13,6 @@ data/20090705025307.csv
 *.index
 *.data-00000-of-00001
 .ropeproject/config.py
+*.csv-00100-of-00104
+*.csv-00015-of-00104
+*data
