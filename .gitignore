@@ -16,3 +16,5 @@ data/20090705025307.csv
 *.csv-00100-of-00104
 *.csv-00015-of-00104
 *data
+data_w_labels/md_old/checkpoint
+scratch_features.py
